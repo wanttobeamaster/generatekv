@@ -6,14 +6,17 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+
+	myreader "github.com/wanttobeamaster/generatedata/reader"
 )
 
 var SplitString = "=========="
 
 func main(){
 
-	fmt.Println(Reader("string"))
-	return 
+
+	myreader.Reader("sada")
+	return
 
 	dataPath := "KeyValueData.txt"
 	if IsExist(dataPath) {
