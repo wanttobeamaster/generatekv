@@ -5,41 +5,36 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"strconv"
 
-	myreader "github.com/wanttobeamaster/generatedata/reader"
+	util "github.com/wanttobeamaster/generatekv/util"
 )
 
-var SplitString = "=========="
-
-func main(){
-
-
-	myreader.Reader("sada")
-	return
-
+func main() {
 	dataPath := "KeyValueData.txt"
-	if IsExist(dataPath) {
+	dataPathDiffValue := "KeyValueDataDiffValue.txt"
+	if IsExist(dataPath) || IsExist(dataPathDiffValue){
 		fmt.Println("[Error]: Key Value data is already generated!")
 		return
 	}
 
-	file , err := os.Open("./data.txt")
+	file, err := os.Open("./data.txt")
 	if err != nil {
-		fmt.Println("[Error]: Open file failed with error: " , err)
+		fmt.Println("[Error]: Open file failed with error: ", err)
 		return
 	}
 	defer file.Close()
 
 	data, err := ioutil.ReadFile("./data.txt")
 	if err != nil {
-		fmt.Println("[Error]: Open file failed with error: " , err)
+		fmt.Println("[Error]: Open file failed with error: ", err)
 		return
 	}
+	fmt.Println("[Info]: len(data)=", len(data))
 
-	writeFile , err := os.OpenFile(dataPath , os.O_APPEND | os.O_WRONLY | os.O_CREATE, 0600 )
-	if err != nil {
-		fmt.Println("[Error]: Open write file failed with error: " , err)
+	writeFile, err := os.OpenFile(dataPath, os.O_APPEND | os.O_WRONLY | os.O_CREATE, 0600)
+	writeFile1 , err1 := os.OpenFile(dataPathDiffValue , os.O_APPEND | os.O_WRONLY | os.O_CREATE , 0600)
+	if err != nil || err1 != nil {
+		fmt.Println("[Error]: Open file faile with error: " , err , err1)
 		return
 	}
 
@@ -47,14 +42,13 @@ func main(){
 	data = DeleteCR(data)
 
 	// 写文件
-	dataSize := WriteKvFile(writeFile , data)
-	io.WriteString(writeFile , strconv.Itoa(dataSize) + "\n")
+	WriteKvFile(writeFile,  writeFile1 , data)
 	fmt.Println("[Info]: Generate data finish!")
 }
 
 //判断文件是否存在
 func IsExist(fileAddr string) bool {
-	_ , err := os.Stat(fileAddr)
+	_, err := os.Stat(fileAddr)
 	if err != nil {
 		return false
 	}
@@ -62,10 +56,10 @@ func IsExist(fileAddr string) bool {
 }
 
 func DeleteCR(data []byte) []byte {
-	res := make([]byte , 0 , len(data))
+	res := make([]byte, 0, len(data))
 	for i := 0; i < len(data); i++ {
 		if data[i] != '\n' {
-			res = append(res , data[i])
+			res = append(res, data[i])
 		}
 	}
 
@@ -73,36 +67,43 @@ func DeleteCR(data []byte) []byte {
 }
 
 // 写文件
-func WriteKvFile(file *os.File , data []byte) int {
+func WriteKvFile(file *os.File, file1 *os.File , data []byte) int {
 	var totalSize int = 0
 	var startIdx int = 0
-	keySize := 8			// 8B
-	valueSize := 1024		// 1KB
-	var LimitSize int = 1 * 1024 * 1024 * 1024 // 1GB
-	
+
 	dataSize := len(data)
-	maxIndex := dataSize - 1024
+	maxIndex := dataSize - util.ValueSize
 	for {
 		if data[startIdx] == '\n' || data[startIdx] == ' ' {
 			startIdx++
 			continue
-		} 
-	
+		}
+
 		if startIdx > maxIndex {
+			fmt.Println("[Info]: startIdx > maxIndex")
 			break
 		}
 
-		key := data[startIdx : startIdx + keySize]
-		value := data[startIdx :startIdx + valueSize]
-		io.WriteString(file , string(key))
-		io.WriteString(file , SplitString)
-		io.WriteString(file , string(value))
-		io.WriteString(file , "\n")
+		key := data[startIdx : startIdx + util.KeySize]
+		value := data[startIdx : startIdx + util.ValueSize]
+		valueDiff := data[startIdx + util.KeySize : startIdx + util.KeySize + util.ValueSize + util.KeySize]
+
+		io.WriteString(file, string(key))
+		io.WriteString(file, util.SplitString)
+		io.WriteString(file, string(value))
+		io.WriteString(file, "\n")
+
+		io.WriteString(file1 , string(key))
+		io.WriteString(file1 , util.SplitString)
+		io.WriteString(file1 , string(valueDiff))
+		io.WriteString(file1 , "\n")
 
 		totalSize += len(key) + len(value)
-		if totalSize >= LimitSize {
+		if totalSize >= util.LimitSize {
+			fmt.Println("[Info]: Current Size = ", totalSize)
 			break
 		}
+		startIdx++
 	}
 
 	return totalSize

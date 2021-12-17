@@ -1,0 +1,5 @@
+package util
+
+const KvDataPath = "../kvdata.txt"
+const SplitString = "=========="
+const LimitSize = 1 * 1024 * 1024 // 1MB
